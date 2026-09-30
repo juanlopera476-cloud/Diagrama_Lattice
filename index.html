@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diagrama de Lattice</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--fg:#111827;--mut:#6b7280;--bd:#e2e5ea;--band:#eef3f9;--fw:#0b5ed7;--bk:#c2410c;--tl:#0f766e;--pu:#7c3aed;--tm:#1d3f8f;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1116;--card:#171b23;--fg:#e5e7eb;--mut:#9ca3af;--bd:#2a303c;--band:#1c2331;--fw:#5aa0ff;--bk:#fb923c;--tl:#2dd4bf;--pu:#a78bfa;--tm:#9dbbff}}
+:root[data-theme="dark"]{--bg:#0e1116;--card:#171b23;--fg:#e5e7eb;--mut:#9ca3af;--bd:#2a303c;--band:#1c2331;--fw:#5aa0ff;--bk:#fb923c;--tl:#2dd4bf;--pu:#a78bfa;--tm:#9dbbff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1500px;margin:0 auto;padding:18px 14px 40px}
+h1{font-size:22px;margin:0 0 2px}h2{font-size:16px;margin:0 0 10px}
+.sub{color:var(--mut);margin:0 0 14px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label{display:block;font-size:12px;color:var(--mut)}
+input,select{box-sizing:border-box;width:100%;margin-top:3px;padding:8px;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:8px}
+input[type=range]{padding:0;accent-color:var(--fw)}input[readonly]{opacity:.65}
+output{color:var(--fg);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end;padding:10px 0;border-top:1px solid var(--bd)}
+.row label{flex:1 1 120px}.row b{flex:0 0 68px;padding-bottom:9px}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--bg);color:var(--fg);border-radius:8px;padding:8px 12px;min-height:40px}
+button.p{background:var(--fw);color:#fff;border-color:var(--fw)}
+.msg{font-size:13px;color:var(--mut);margin:0 0 10px}.err{color:#dc2626;font-weight:600}
+.scroll{overflow-x:auto;overflow-y:hidden;border-radius:8px}
+svg{display:block}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px}
+.charts .card{margin:0}.charts svg{width:100%;height:auto}
+.band{fill:var(--band)}.grid-l{stroke:var(--bd);stroke-dasharray:2 4}
+.ax{fill:var(--mut);font-size:12px}.disc{stroke:var(--fg);stroke-width:2.5}
+.hd{fill:var(--fg);font-size:13px}.cf{fill:var(--fg);font-size:13px}
+.fw{--c:var(--fw)}.bk{--c:var(--bk)}.tl{--c:var(--tl)}.pu{--c:var(--pu)}
+.w{stroke:var(--c);stroke-width:1.6;fill:none}.dash{stroke-dasharray:6 4}.ar{fill:var(--c)}
+.lb{fill:var(--c);font-size:11px;font-weight:600;paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round}
+.tk{stroke:var(--fg)}.tm{fill:var(--tm);font-size:11px;font-weight:700;paint-order:stroke;stroke:var(--card);stroke-width:3px}
+.v0{fill:var(--fw);font-weight:700;font-size:13px}.rv{fill:var(--tl);font-weight:700;font-size:12px}
+.ct{fill:var(--fg);font-weight:700;font-size:15px}.pl{fill:none;stroke:var(--c);stroke-width:2.2}
+.dt{fill:var(--c)}.dl{fill:var(--c);font-size:11px;font-weight:600;text-anchor:middle}.c0{stroke:var(--mut)}
+</style>
+</head>
+<body>
+<main>
+<h1>⚡ Diagrama de Lattice (Bewley)</h1>
+<p class="sub">Ondas viajeras de tensión · Emisor Z = 0 Ω · Receptor Z = ∞ · Cada cambio se recalcula solo</p>
+
+<section class="card" id="ctl">
+  <div class="grid">
+    <label>Atenuación k por medio (0.90 – 1.00)<input id="k" type="number" min="0.9" max="1" step="0.005" value="0.99"></label>
+    <label>V₀ (p.u.)<input id="v0" type="number" step="any" value="1"></label>
+    <label>t máx (µs, hasta 100)<input id="tmax" type="number" min="1" max="100" step="any" value="30"></label>
+    <label>Umbral de propagación (p.u.)<input id="eps" type="number" min="0" step="any" value="0.001"></label>
+    <label>Umbral de etiquetas (p.u.)<input id="eti" type="number" min="0" step="any" value="0"></label>
+    <label>Etiquetas<select id="lab"><option value="ambos">salida → llegada</option><option value="llegada">solo llegada</option></select></label>
+    <label>Ancho por medio: <output>320</output> px<input id="cw" type="range" min="220" max="700" step="10" value="320"></label>
+    <label>Alto del diagrama: <output>900</output> px<input id="alt" type="range" min="500" max="2400" step="50" value="900"></label>
+  </div>
+  <h2 style="margin-top:16px">Medios intermedios</h2>
+  <p class="sub" style="margin:0 0 4px">El medio 1 (emisor) y el último (receptor) son fijos. Agrega tantos medios como necesites.</p>
+  <div id="rows"></div>
+  <button type="button" id="add">＋ Agregar medio</button>
+</section>
+
+<p class="msg" id="msg"></p>
+
+<section class="card">
+  <h2 id="lt">Diagrama de Lattice</h2>
+  <div class="scroll"><svg id="lat" role="img" aria-label="Diagrama de Lattice"></svg></div>
+</section>
+
+<div class="charts">
+  <section class="card"><svg id="c1" role="img" aria-label="Tensión instantánea en el receptor"></svg></section>
+  <section class="card"><svg id="c2" role="img" aria-label="Tensión acumulada en el receptor"></svg></section>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id),C=300,MAX=6000;
+const TIPOS={aerea:['Línea aérea',C],guarda:['Cable de guarda',.99*C],torre:['Torre',.825*C],cable:['Cable subterráneo/aislado',.5*C],custom:['Personalizado',null]};
+const fmt=v=>{let s=(v!==0&&Math.abs(v)<.1)?v.toFixed(4):v.toFixed(3);s=s.replace(/0+$/,'').replace(/\.$/,'');return(s===''||s==='-0')?'0':s};
+const nice=r=>{const p=10**Math.floor(Math.log10(r)),f=r/p;return(f<1.5?1:f<3.5?2:f<7.5?5:10)*p};
+const rows=()=>[...document.querySelectorAll('#rows .row')];
+let tmr;const go=()=>{clearTimeout(tmr);tmr=setTimeout(render,120)};
+
+function coef(Za,Zb){
+  if(!isFinite(Zb))return[1,2];
+  if(!isFinite(Za))return[-1,0];
+  const s=Za+Zb;if(s===0)return[-1,0];
+  return[(Zb-Za)/s,2*Zb/s];
+}
+
+function simular(med,k,V0,tmax,eps){
+  const N=med.length,ondas=[],rec=new Map(),q=[[2,1,0,V0]];let h=0,lim=false;
+  while(h<q.length){
+    const[m,d,t0,a0]=q[h++];
+    if(t0>=tmax||Math.abs(a0)<eps)continue;
+    if(ondas.length>=MAX){lim=true;break}
+    const me=med[m-1],t1=t0+me.L/me.v,a1=a0*k,w={m,d,t0,t1,a0,a1,tr:t1>tmax};
+    ondas.push(w);if(w.tr)continue;
+    const ve=d===1?m+1:m-1,[al,be]=coef(me.Z,med[ve-1].Z);
+    q.push([m,-d,t1,a1*al]);
+    if(ve===N){const key=Math.round(t1*1e9)/1e9;rec.set(key,(rec.get(key)||0)+a1*be)}
+    else if(ve!==1)q.push([ve,d,t1,a1*be]);
+  }
+  return{ondas,rec:[...rec].sort((a,b)=>a[0]-b[0]),lim};
+}
+
+function renum(){rows().forEach((r,i)=>r.querySelector('b').textContent='Medio '+(i+2))}
+function addRow(t='aerea',Z=400,L=3000){
+  const d=document.createElement('div');d.className='row';
+  d.innerHTML=`<b></b><label>Tipo<select class="t">${Object.entries(TIPOS).map(([k,x])=>`<option value="${k}"${k===t?' selected':''}>${x[0]}</option>`).join('')}</select></label>
+  <label>Z (Ω)<input class="z" type="number" min="0.001" step="any" value="${Z}"></label>
+  <label>L (m)<input class="l" type="number" min="0.001" step="any" value="${L}"></label>
+  <label>v (m/µs)<input class="v" type="number" min="0.001" max="300" step="any" value="${C}"></label>
+  <button type="button" class="x" title="Quitar medio" aria-label="Quitar medio">✕</button>`;
+  const sel=d.querySelector('.t'),vi=d.querySelector('.v');
+  const sync=()=>{const s=TIPOS[sel.value][1];if(s!==null){vi.value=s;vi.readOnly=true}else vi.readOnly=false};
+  sel.onchange=()=>{sync();go()};
+  d.querySelector('.x').onclick=()=>{if(rows().length>1){d.remove();renum();go()}};
+  $('rows').append(d);sync();renum();
+}
+
+function leer(){
+  const med=[{nombre:'Emisor',Z:0,L:0,v:0}];
+  for(const r of rows()){
+    const Z=+r.querySelector('.z').value,L=+r.querySelector('.l').value,v=+r.querySelector('.v').value;
+    if(!(Z>0&&L>0&&v>0&&v<=C))return null;
+    med.push({nombre:TIPOS[r.querySelector('.t').value][0],Z,L,v});
+  }
+  med.push({nombre:'Receptor',Z:Infinity,L:0,v:0});return med;
+}
+
+function render(){
+  const med=leer(),k=+$('k').value,V0=+$('v0').value,tmax=+$('tmax').value,eps=+$('eps').value,m=$('msg');
+  if(!med||!(k>=.9&&k<=1)||!(tmax>0&&tmax<=100)||!V0||!(eps>=0)){
+    m.className='msg err';m.textContent='Revisa los datos: Z, L y v deben ser > 0 (v ≤ 300), k entre 0.90 y 1.00 y t máx entre 0 y 100 µs.';return}
+  const r=simular(med,k,V0,tmax,eps);
+  m.className='msg';
+  m.textContent=`Ondas generadas: ${r.ondas.length}`+(r.lim?` — se alcanzó el límite de ${MAX}; reduce t máx o sube el umbral de propagación.`:'');
+  $('lt').textContent=`Diagrama de Lattice — k = ${k}, V₀ = ${fmt(V0)} p.u., t máx = ${fmt(tmax)} µs`;
+  lattice(med,r,V0,tmax);
+  let ac=0;
+  chart('c1','Tensión instantánea en el receptor',r.rec,'tl',tmax);
+  chart('c2','Tensión acumulada en el receptor (superposición)',r.rec.map(([t,v])=>[t,ac+=v]),'pu',tmax);
+}
+
+function lattice(med,{ondas,rec},V0,tmax){
+  const N=med.length,cw=+$('cw').value,H=+$('alt').value,mode=$('lab').value,umb=+$('eti').value||0;
+  const mL=150,mR=200,top=130,bot=120,W=mL+(N-2)*cw+mR,Ht=top+H+bot;
+  const X=j=>mL+j*cw,Y=t=>top+t/tmax*H,o=[];
+  for(let i=2;i<N;i++)if(i%2===0)o.push(`<rect class="band" x="${X(i-2)}" y="${top}" width="${cw}" height="${H}"/>`);
+  const st=nice(tmax/8);
+  for(let i=0;i*st<=tmax+1e-9;i++){const y=Y(i*st);o.push(`<line class="grid-l" x1="70" x2="${W-10}" y1="${y}" y2="${y}"/><text class="ax" x="64" y="${y+4}" text-anchor="end">${fmt(i*st)}</text>`)}
+  o.push(`<text class="ax" transform="translate(16,${top+H/2}) rotate(-90)" text-anchor="middle">t (µs)</text>`);
+  for(let j=0;j<N-1;j++)o.push(`<line class="disc" x1="${X(j)}" x2="${X(j)}" y1="${top}" y2="${top+H}"/>`);
+  med.forEach((m,i)=>{
+    const n=i+1;let xc,L;
+    if(n===1){xc=X(0)-70;L=['Medio 1','(emisor)','Z = 0 Ω','L = 0 m']}
+    else if(n===N){xc=X(N-2)+100;L=[`Medio ${N}`,'(receptor)','Z = ∞','L = 0 m']}
+    else{xc=(X(n-2)+X(n-1))/2;L=[`Medio ${n}`,m.nombre,`Z = ${fmt(m.Z)} Ω ; L = ${fmt(m.L)} m`,`v = ${fmt(m.v)} m/µs ; τ = ${fmt(m.L/m.v)} µs`]}
+    o.push(`<text class="hd" text-anchor="middle" x="${xc}" y="${top-64}">`+L.map((s,q)=>`<tspan x="${xc}" dy="${q?16:0}"${q?'':' font-weight="700"'}>${s}</tspan>`).join('')+'</text>');
+  });
+  const lb=[],tk=Array.from({length:N-1},()=>new Set());
+  for(const w of ondas){
+    const a=w.d===1?w.m-2:w.m-1,b=w.d===1?w.m-1:w.m-2;
+    let xz=X(b),tz=w.t1;const xa=X(a);
+    if(w.tr){xz=xa+(tmax-w.t0)/(w.t1-w.t0)*(xz-xa);tz=tmax}
+    const y1=Y(w.t0),y2=Y(tz),dx=xz-xa,dy=y2-y1,len=Math.hypot(dx,dy),cl=w.d===1?'fw':'bk';
+    o.push(`<line class="w ${cl}${w.tr?' dash':''}" x1="${xa}" y1="${y1}" x2="${xz}" y2="${y2}"><title>Medio ${w.m} ${w.d===1?'→':'←'}: ${fmt(w.a0)} → ${fmt(w.a1)} (${fmt(w.t0)} a ${fmt(w.t1)} µs)</title></line>`);
+    if(len>36){const ux=dx/len,uy=dy/len,px=xa+dx*.55,py=y1+dy*.55;
+      o.push(`<polygon class="ar ${cl}" points="${px+ux*6},${py+uy*6} ${px-ux*4-uy*4},${py-uy*4+ux*4} ${px-ux*4+uy*4},${py-uy*4-ux*4}"/>`)}
+    tk[a].add(+w.t0.toFixed(6));if(!w.tr)tk[b].add(+w.t1.toFixed(6));
+    if(Math.abs(w.a0)>=umb&&len>60){
+      let ang=Math.atan2(dy,dx)*180/Math.PI,inv=false;
+      if(ang>90){ang-=180;inv=true}else if(ang<-90){ang+=180;inv=true}
+      const txt=mode==='llegada'?fmt(w.a1):inv?`${fmt(w.a1)} ← ${fmt(w.a0)}`:`${fmt(w.a0)} → ${fmt(w.a1)}`;
+      lb.push(`<text class="lb ${cl}" transform="translate(${xa+dx*.3},${y1+dy*.3}) rotate(${ang})" text-anchor="middle" dy="-5">${txt}</text>`);
+    }
+  }
+  tk.forEach((s,j)=>[...s].sort((a,b)=>a-b).forEach(t=>o.push(`<line class="tk" x1="${X(j)-4}" x2="${X(j)+4}" y1="${Y(t)}" y2="${Y(t)}"/><text class="tm" x="${X(j)-8}" y="${Y(t)+4}" text-anchor="end">${fmt(t)}</text>`)));
+  o.push(...lb);
+  o.push(`<text class="v0" x="${X(0)+8}" y="${top-6}">V₀ = ${fmt(V0)} p.u.</text>`);
+  for(const[t,v]of rec){const y=Y(t),x=X(N-2);
+    o.push(`<line class="w tl" x1="${x}" y1="${y}" x2="${x+58}" y2="${y}"/><polygon class="ar tl" points="${x+66},${y} ${x+56},${y-4} ${x+56},${y+4}"/><text class="rv" x="${x+74}" y="${y+4}">${fmt(v)}</text>`)}
+  const sep=N>=10?',':'';
+  const sb=(g,a,b,v)=>`${g}<tspan dy="4" font-size="10">${a}${sep}${b}</tspan><tspan dy="-4"> = ${fmt(v)}</tspan>`;
+  for(let j=1;j<N;j++){
+    const[af,bf]=coef(med[j-1].Z,med[j].Z),[ab,bb]=coef(med[j].Z,med[j-1].Z),x=X(j-1),ls=[];
+    if(j!==1)ls.push(sb('α',j,j+1,af),sb('β',j,j+1,bf));
+    if(j!==N-1)ls.push(sb('α',j+1,j,ab),sb('β',j+1,j,bb));
+    o.push(`<text class="cf" text-anchor="middle" x="${x}" y="${top+H+14}">`+ls.map(s=>`<tspan x="${x}" dy="17">${s}</tspan>`).join('')+'</text>');
+  }
+  const s=$('lat');s.setAttribute('viewBox',`0 0 ${W} ${Ht}`);s.setAttribute('width',W);s.setAttribute('height',Ht);s.innerHTML=o.join('');
+}
+
+function chart(id,title,pts,cls,tmax){
+  const W=640,Hh=310,l=58,r=18,t=36,b=42,pw=W-l-r,ph=Hh-t-b,vs=pts.map(p=>p[1]);
+  let lo=Math.min(0,...vs),hi=Math.max(0,...vs);if(hi===lo)hi=1;
+  const pad=(hi-lo)*.12;hi+=pad;if(lo<0)lo-=pad;
+  const X=x=>l+x/tmax*pw,Y=y=>t+ph-(y-lo)/(hi-lo)*ph,o=[`<text class="ct" x="${l}" y="20">${title}</text>`];
+  const sy=nice((hi-lo)/5);
+  for(let i=Math.ceil(lo/sy);i*sy<=hi+1e-9;i++){const y=Y(i*sy);o.push(`<line class="${i?'grid-l':'c0'}" x1="${l}" x2="${W-r}" y1="${y}" y2="${y}"/><text class="ax" x="${l-6}" y="${y+4}" text-anchor="end">${fmt(i*sy)}</text>`)}
+  const sx=nice(tmax/8);
+  for(let i=0;i*sx<=tmax+1e-9;i++)o.push(`<text class="ax" x="${X(i*sx)}" y="${Hh-22}" text-anchor="middle">${fmt(i*sx)}</text>`);
+  o.push(`<text class="ax" x="${W-r}" y="${Hh-6}" text-anchor="end">t (µs)</text>`);
+  let d=`M${X(0)},${Y(0)}`,cur=0;
+  for(const[tt,v]of pts){d+=` L${X(tt)},${Y(cur)} L${X(tt)},${Y(v)}`;cur=v}
+  d+=` L${X(tmax)},${Y(cur)}`;
+  o.push(`<path class="pl ${cls}" d="${d}"/>`);
+  for(const[tt,v]of pts){
+    o.push(`<circle class="dt ${cls}" cx="${X(tt)}" cy="${Y(v)}" r="3.5"/>`);
+    if(pts.length<=40)o.push(`<text class="dl ${cls}" x="${X(tt)}" y="${Y(v)-8}">${fmt(v)}</text>`);
+  }
+  const s=$(id);s.setAttribute('viewBox',`0 0 ${W} ${Hh}`);s.innerHTML=o.join('');
+}
+
+document.querySelectorAll('input[type=range]').forEach(r=>{const o=r.closest('label').querySelector('output');const u=()=>o.textContent=r.value;r.addEventListener('input',u);u()});
+$('ctl').addEventListener('input',go);
+$('add').onclick=()=>{addRow();go()};
+addRow('aerea',400,3000);addRow('cable',40,150);render();
+</script>
+</body>
+</html>
