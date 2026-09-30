@@ -54,7 +54,7 @@ svg{display:block}
     <label>Umbral de propagación (p.u.)<input id="eps" type="number" min="0" step="any" value="0.001"></label>
     <label>Umbral de etiquetas (p.u.)<input id="eti" type="number" min="0" step="any" value="0"></label>
     <label>Etiquetas<select id="lab"><option value="ambos">salida → llegada</option><option value="llegada">solo llegada</option></select></label>
-    <label>Ancho por medio: <output>320</output> px<input id="cw" type="range" min="220" max="700" step="10" value="320"></label>
+    <label>Ancho mínimo por medio: <output>260</output> px<input id="cw" type="range" min="200" max="700" step="10" value="260"></label>
     <label>Alto del diagrama: <output>900</output> px<input id="alt" type="range" min="500" max="2400" step="50" value="900"></label>
   </div>
   <h2 style="margin-top:16px">Medios intermedios</h2>
@@ -147,8 +147,10 @@ function render(){
 }
 
 function lattice(med,{ondas,rec},V0,tmax){
-  const N=med.length,cw=+$('cw').value,H=+$('alt').value,mode=$('lab').value,umb=+$('eti').value||0;
-  const mL=150,mR=200,top=130,bot=120,W=mL+(N-2)*cw+mR,Ht=top+H+bot;
+  const N=med.length,H=+$('alt').value,mode=$('lab').value,umb=+$('eti').value||0;
+  const mL=150,mR=200,top=130,bot=120,avail=$('lat').parentElement.clientWidth||1200;
+  // los medios intermedios se reparten TODO el ancho disponible (nunca menos del mínimo elegido)
+  const cw=Math.max(+$('cw').value,(avail-mL-mR)/(N-2)),W=Math.floor(mL+(N-2)*cw+mR),Ht=top+H+bot;
   const X=j=>mL+j*cw,Y=t=>top+t/tmax*H,o=[];
   for(let i=2;i<N;i++)if(i%2===0)o.push(`<rect class="band" x="${X(i-2)}" y="${top}" width="${cw}" height="${H}"/>`);
   const st=nice(tmax/8);
@@ -183,7 +185,7 @@ function lattice(med,{ondas,rec},V0,tmax){
   o.push(...lb);
   o.push(`<text class="v0" x="${X(0)+8}" y="${top-6}">V₀ = ${fmt(V0)} p.u.</text>`);
   for(const[t,v]of rec){const y=Y(t),x=X(N-2);
-    o.push(`<line class="w tl" x1="${x}" y1="${y}" x2="${x+58}" y2="${y}"/><polygon class="ar tl" points="${x+66},${y} ${x+56},${y-4} ${x+56},${y+4}"/><text class="rv" x="${x+74}" y="${y+4}">${fmt(v)}</text>`)}
+    o.push(`<line class="w tl" x1="${x}" y1="${y}" x2="${x+58}" y2="${y}"/><polygon class="ar tl" points="${x+66},${y} ${x+56},${y-4} ${x+56},${y+4}"/>${Math.abs(v)>=umb?`<text class="rv" x="${x+74}" y="${y+4}">${fmt(v)}</text>`:''}`)}
   const sep=N>=10?',':'';
   const sb=(g,a,b,v)=>`${g}<tspan dy="4" font-size="10">${a}${sep}${b}</tspan><tspan dy="-4"> = ${fmt(v)}</tspan>`;
   for(let j=1;j<N;j++){
@@ -211,7 +213,7 @@ function chart(id,title,pts,cls,tmax){
   o.push(`<path class="pl ${cls}" d="${d}"/>`);
   for(const[tt,v]of pts){
     o.push(`<circle class="dt ${cls}" cx="${X(tt)}" cy="${Y(v)}" r="3.5"/>`);
-    if(pts.length<=40)o.push(`<text class="dl ${cls}" x="${X(tt)}" y="${Y(v)-8}">${fmt(v)}</text>`);
+    if(pts.length<=40&&Math.abs(v)>=(+$('eti').value||0))o.push(`<text class="dl ${cls}" x="${X(tt)}" y="${Y(v)-8}">${fmt(v)}</text>`);
   }
   const s=$(id);s.setAttribute('viewBox',`0 0 ${W} ${Hh}`);s.innerHTML=o.join('');
 }
@@ -220,6 +222,9 @@ document.querySelectorAll('input[type=range]').forEach(r=>{const o=r.closest('la
 $('ctl').addEventListener('input',go);
 $('add').onclick=()=>{addRow();go()};
 addRow('aerea',400,3000);addRow('cable',40,150);render();
+// al cambiar el tamaño de la ventana, el diagrama se reajusta al ancho disponible
+let lastW=$('lat').parentElement.clientWidth;
+new ResizeObserver(()=>{const w=$('lat').parentElement.clientWidth;if(w!==lastW){lastW=w;go()}}).observe($('lat').parentElement);
 </script>
 </body>
 </html>
