@@ -29,6 +29,15 @@ button.p{background:var(--fw);color:#fff;border-color:var(--fw)}
 svg{display:block}
 .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px}
 .charts .card{margin:0}.charts svg{width:100%;height:auto}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.hrow h2{margin:0}
+button:disabled{opacity:.5;cursor:default}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.tile{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+.tile span{display:block;font-size:12px;color:var(--mut)}.tile b{display:block;font-size:20px;margin:2px 0}.tile small{color:var(--mut);font-size:12px}
+.wrap{display:flex}.wrap>svg{flex:none}.wrap .scroll{flex:1;min-width:0}
+.hit{stroke:transparent;stroke-width:12;pointer-events:stroke}
+svg.hl [data-w]{opacity:.1}svg.hl [data-w].on{opacity:1}
+.cur{stroke:var(--tl);stroke-width:1.5;stroke-dasharray:4 3}
 .band{fill:var(--band)}.grid-l{stroke:var(--bd);stroke-dasharray:2 4}
 .ax{fill:var(--mut);font-size:12px}.disc{stroke:var(--fg);stroke-width:2.5}
 .hd{fill:var(--fg);font-size:13px}.cf{fill:var(--fg);font-size:13px}
@@ -43,31 +52,41 @@ svg{display:block}
 </head>
 <body>
 <main>
-<h1>⚡ Diagrama de Lattice (Bewley)</h1>
+<div class="hrow"><h1>⚡ Diagrama de Lattice (Bewley)</h1><button type="button" id="thm" title="Cambiar entre tema claro y oscuro">🌓 Tema</button></div>
 <p class="sub">Ondas viajeras de tensión · Emisor Z = 0 Ω · Receptor Z = ∞ · Cada cambio se recalcula solo</p>
 
 <section class="card" id="ctl">
   <div class="grid">
-    <label>Atenuación k por medio (0.90 – 1.00)<input id="k" type="number" min="0.9" max="1" step="0.005" value="0.99"></label>
     <label>V₀ (p.u.)<input id="v0" type="number" step="any" value="1"></label>
     <label>t máx (µs, hasta 100)<input id="tmax" type="number" min="1" max="100" step="any" value="30"></label>
-    <label>Umbral de propagación (p.u.)<input id="eps" type="number" min="0" step="any" value="0.001"></label>
-    <label>Umbral de etiquetas (p.u.)<input id="eti" type="number" min="0" step="any" value="0"></label>
+    <label title="Tensión mínima (en valor absoluto) para que una onda siga propagándose. Más alto = diagrama más ligero pero menos preciso.">Umbral de propagación (p.u.)<input id="eps" type="number" min="0" step="any" value="0.001"></label>
+    <label title="Solo se rotulan las ondas con |V| mayor o igual a este valor. No cambia el cálculo.">Umbral de etiquetas (p.u.)<input id="eti" type="number" min="0" step="any" value="0"></label>
     <label>Etiquetas<select id="lab"><option value="ambos">salida → llegada</option><option value="llegada">solo llegada</option></select></label>
+    <label title="Inicio de la ventana de tiempo visible en el diagrama">Ver desde t (µs)<input id="t0" type="number" min="0" step="any" value="0"></label>
+    <label title="Fin de la ventana de tiempo visible (vacío = t máx)">Ver hasta t (µs)<input id="t1" type="number" min="0" step="any" placeholder="t máx"></label>
     <label>Ancho mínimo por medio: <output>260</output> px<input id="cw" type="range" min="200" max="700" step="10" value="260"></label>
     <label>Alto del diagrama: <output>900</output> px<input id="alt" type="range" min="500" max="2400" step="50" value="900"></label>
   </div>
   <h2 style="margin-top:16px">Medios intermedios</h2>
-  <p class="sub" style="margin:0 0 4px">El medio 1 (emisor) y el último (receptor) son fijos. Agrega tantos medios como necesites.</p>
+  <p class="sub" style="margin:0 0 4px">El medio 1 (emisor) y el último (receptor) son fijos. Agrega tantos medios como necesites. La atenuación k (0.90 a 1.00; 1 = sin atenuación) se define en cada medio intermedio.</p>
   <div id="rows"></div>
   <button type="button" id="add">＋ Agregar medio</button>
+</section>
+
+<section class="card">
+  <div class="hrow"><h2>Resumen del receptor</h2><button type="button" class="p" id="xls" disabled>⬇ Exportar a Excel</button></div>
+  <div class="stats" id="stats"></div>
 </section>
 
 <p class="msg" id="msg"></p>
 
 <section class="card">
-  <h2 id="lt">Diagrama de Lattice</h2>
-  <div class="scroll"><svg id="lat" role="img" aria-label="Diagrama de Lattice"></svg></div>
+  <div class="hrow"><h2 id="lt">Diagrama de Lattice</h2>
+    <div class="hrow" style="margin:0"><button type="button" id="play">▶ Reproducir</button>
+      <select id="spd" style="width:auto;margin:0" title="Velocidad de la animación"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+      <button type="button" id="rst" title="Mostrar todo el tiempo">Ver todo</button><button type="button" id="png">⬇ PNG</button><button type="button" id="svg">⬇ SVG</button></div></div>
+  <p class="msg" style="margin:0 0 8px">Pasa el cursor sobre una onda para resaltar de dónde viene y qué ondas genera · Ctrl + rueda (o pellizco) para hacer zoom en el tiempo</p>
+  <div class="wrap"><svg id="ax" aria-hidden="true"></svg><div class="scroll"><svg id="lat" role="img" aria-label="Diagrama de Lattice"></svg></div></div>
 </section>
 
 <div class="charts">
@@ -76,13 +95,14 @@ svg{display:block}
 </div>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),C=300,MAX=6000;
 const TIPOS={aerea:['Línea aérea',C],guarda:['Cable de guarda',.99*C],torre:['Torre',.825*C],cable:['Cable subterráneo/aislado',.5*C],custom:['Personalizado',null]};
 const fmt=v=>{let s=(v!==0&&Math.abs(v)<.1)?v.toFixed(4):v.toFixed(3);s=s.replace(/0+$/,'').replace(/\.$/,'');return(s===''||s==='-0')?'0':s};
 const nice=r=>{const p=10**Math.floor(Math.log10(r)),f=r/p;return(f<1.5?1:f<3.5?2:f<7.5?5:10)*p};
 const rows=()=>[...document.querySelectorAll('#rows .row')];
-let tmr;const go=()=>{clearTimeout(tmr);tmr=setTimeout(render,120)};
+let tmr,last=null;const go=()=>{clearTimeout(tmr);tmr=setTimeout(render,120)};
 
 function coef(Za,Zb){
   if(!isFinite(Zb))return[1,2];
@@ -91,29 +111,30 @@ function coef(Za,Zb){
   return[(Zb-Za)/s,2*Zb/s];
 }
 
-function simular(med,k,V0,tmax,eps){
-  const N=med.length,ondas=[],rec=new Map(),q=[[2,1,0,V0]];let h=0,lim=false;
+function simular(med,V0,tmax,eps){
+  const N=med.length,ondas=[],rec=new Map(),q=[[2,1,0,V0,-1]];let h=0,lim=false;
   while(h<q.length){
-    const[m,d,t0,a0]=q[h++];
+    const[m,d,t0,a0,pa]=q[h++];
     if(t0>=tmax||Math.abs(a0)<eps)continue;
     if(ondas.length>=MAX){lim=true;break}
-    const me=med[m-1],t1=t0+me.L/me.v,a1=a0*k,w={m,d,t0,t1,a0,a1,tr:t1>tmax};
+    const me=med[m-1],t1=t0+me.L/me.v,a1=a0*me.k,w={m,d,t0,t1,a0,a1,tr:t1>tmax,id:ondas.length,p:pa};
     ondas.push(w);if(w.tr)continue;
     const ve=d===1?m+1:m-1,[al,be]=coef(me.Z,med[ve-1].Z);
-    q.push([m,-d,t1,a1*al]);
+    q.push([m,-d,t1,a1*al,w.id]);
     if(ve===N){const key=Math.round(t1*1e9)/1e9;rec.set(key,(rec.get(key)||0)+a1*be)}
-    else if(ve!==1)q.push([ve,d,t1,a1*be]);
+    else if(ve!==1)q.push([ve,d,t1,a1*be,w.id]);
   }
   return{ondas,rec:[...rec].sort((a,b)=>a[0]-b[0]),lim};
 }
 
 function renum(){rows().forEach((r,i)=>r.querySelector('b').textContent='Medio '+(i+2))}
-function addRow(t='aerea',Z=400,L=3000){
+function addRow(t='aerea',Z=400,L=3000,k=.99){
   const d=document.createElement('div');d.className='row';
   d.innerHTML=`<b></b><label>Tipo<select class="t">${Object.entries(TIPOS).map(([k,x])=>`<option value="${k}"${k===t?' selected':''}>${x[0]}</option>`).join('')}</select></label>
   <label>Z (Ω)<input class="z" type="number" min="0.001" step="any" value="${Z}"></label>
   <label>L (m)<input class="l" type="number" min="0.001" step="any" value="${L}"></label>
   <label>v (m/µs)<input class="v" type="number" min="0.001" max="300" step="any" value="${C}"></label>
+  <label title="Factor de atenuación al recorrer este medio (1 = sin pérdidas)">k (0.90–1)<input class="k" type="number" min="0.9" max="1" step="0.005" value="${k}"></label>
   <button type="button" class="x" title="Quitar medio" aria-label="Quitar medio">✕</button>`;
   const sel=d.querySelector('.t'),vi=d.querySelector('.v');
   const sync=()=>{const s=TIPOS[sel.value][1];if(s!==null){vi.value=s;vi.readOnly=true}else vi.readOnly=false};
@@ -125,44 +146,127 @@ function addRow(t='aerea',Z=400,L=3000){
 function leer(){
   const med=[{nombre:'Emisor',Z:0,L:0,v:0}];
   for(const r of rows()){
-    const Z=+r.querySelector('.z').value,L=+r.querySelector('.l').value,v=+r.querySelector('.v').value;
-    if(!(Z>0&&L>0&&v>0&&v<=C))return null;
-    med.push({nombre:TIPOS[r.querySelector('.t').value][0],Z,L,v});
+    const Z=+r.querySelector('.z').value,L=+r.querySelector('.l').value,v=+r.querySelector('.v').value,k=+r.querySelector('.k').value;
+    if(!(Z>0&&L>0&&v>0&&v<=C&&k>=.9&&k<=1))return null;
+    med.push({nombre:TIPOS[r.querySelector('.t').value][0],Z,L,v,k});
   }
   med.push({nombre:'Receptor',Z:Infinity,L:0,v:0});return med;
 }
 
 function render(){
-  const med=leer(),k=+$('k').value,V0=+$('v0').value,tmax=+$('tmax').value,eps=+$('eps').value,m=$('msg');
-  if(!med||!(k>=.9&&k<=1)||!(tmax>0&&tmax<=100)||!V0||!(eps>=0)){
-    m.className='msg err';m.textContent='Revisa los datos: Z, L y v deben ser > 0 (v ≤ 300), k entre 0.90 y 1.00 y t máx entre 0 y 100 µs.';return}
-  const r=simular(med,k,V0,tmax,eps);
+  const med=leer(),V0=+$('v0').value,tmax=+$('tmax').value,eps=+$('eps').value,m=$('msg');
+  if(!med||!(tmax>0&&tmax<=100)||!V0||!(eps>=0)){
+    last=null;$('xls').disabled=true;
+    m.className='msg err';m.textContent='Revisa los datos: Z, L y v deben ser > 0 (v ≤ 300), cada k entre 0.90 y 1.00 y t máx entre 0 y 100 µs.';return}
+  const r=simular(med,V0,tmax,eps),rec=r.rec,ac=[];
+  let a=0,mx=-Infinity,mxT=0,mn=Infinity,mnT=0,pk=0,pkT=0;
+  for(const[t,v]of rec){a+=v;ac.push([t,a]);if(a>mx){mx=a;mxT=t}if(a<mn){mn=a;mnT=t}if(Math.abs(v)>Math.abs(pk)){pk=v;pkT=t}}
+  if(!rec.length)mx=mn=0;
+  const ints=med.slice(1,-1),tr=ints.reduce((x,y)=>x+y.L/y.v,0),kp=ints.reduce((x,y)=>x*y.k,1),e=rec.length>0;
+  const st=[
+    {l:'Tiempo de tránsito total (Σ τ)',v:tr,u:'µs',n:'emisor → receptor, sin reflexiones'},
+    {l:'Primera tensión en el receptor',v:e?rec[0][1]:null,u:'p.u.',n:e?`a los ${fmt(rec[0][0])} µs`:'no llega antes de t máx'},
+    {l:'Tensión acumulada máxima',v:mx,u:'p.u.',n:e?`a los ${fmt(mxT)} µs · ${fmt(mx/V0)} × V₀`:'—'},
+    {l:'Tensión acumulada mínima',v:mn,u:'p.u.',n:e?`a los ${fmt(mnT)} µs`:'—'},
+    {l:'Pico instantáneo (mayor |V|)',v:pk,u:'p.u.',n:e?`a los ${fmt(pkT)} µs`:'—'},
+    {l:'Tensión acumulada final',v:a,u:'p.u.',n:`a t = ${fmt(tmax)} µs · ${rec.length} llegadas`},
+    {l:'Atenuación de un recorrido (Π k)',v:kp,u:'',n:'producto de los k de los medios intermedios'},
+    {l:'Ondas simuladas',v:r.ondas.length,u:'',n:r.lim?'límite alcanzado':'simulación completa'}];
+  last={med,r,V0,tmax,eps,st,ac};$('xls').disabled=false;
+  $('stats').innerHTML=st.map(x=>`<div class="tile"><span>${x.l}</span><b>${x.v===null?'—':fmt(x.v)} ${x.u}</b><small>${x.n}</small></div>`).join('');
   m.className='msg';
   m.textContent=`Ondas generadas: ${r.ondas.length}`+(r.lim?` — se alcanzó el límite de ${MAX}; reduce t máx o sube el umbral de propagación.`:'');
-  $('lt').textContent=`Diagrama de Lattice — k = ${k}, V₀ = ${fmt(V0)} p.u., t máx = ${fmt(tmax)} µs`;
+  $('lt').textContent=`Diagrama de Lattice — V₀ = ${fmt(V0)} p.u., t máx = ${fmt(tmax)} µs`;
   lattice(med,r,V0,tmax);
-  let ac=0;
-  chart('c1','Tensión instantánea en el receptor',r.rec,'tl',tmax);
-  chart('c2','Tensión acumulada en el receptor (superposición)',r.rec.map(([t,v])=>[t,ac+=v]),'pu',tmax);
+  chart('c1','Tensión instantánea en el receptor',rec,'tl',tmax);
+  chart('c2','Tensión acumulada en el receptor (superposición)',ac,'pu',tmax);
 }
+
+async function saveFile(name,bytes){
+  try{const d=window.claude&&await window.claude.use('downloads');
+    if(d){await d.save({filename:name,data:bytes});return}}
+  catch(e){if(e&&e.code==='declined')return}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([bytes]));
+  a.download=name;document.body.append(a);a.click();a.remove();
+}
+function exportar(){
+  if(!last)return;
+  if(!window.XLSX){alert('No se pudo cargar la librería de Excel. Revisa tu conexión a internet.');return}
+  const{med,r,V0,tmax,eps,st,ac}=last,N=med.length,wb=XLSX.utils.book_new();
+  const add=(n,rows,w)=>{const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=w.map(x=>({wch:x}));XLSX.utils.book_append_sheet(wb,ws,n)};
+  add('Resumen',[['Dato','Valor','Unidad','Nota'],...st.map(x=>[x.l,x.v===null?'—':x.v,x.u,x.n]),[],['Parámetros'],['V₀ (p.u.)',V0],['t máx (µs)',tmax],['Umbral de propagación (p.u.)',eps]],[36,14,8,44]);
+  add('Medios',[['Medio','Tipo','Z (Ω)','L (m)','v (m/µs)','τ (µs)','k'],...med.map((m,i)=>i===0?[1,'Emisor',0,0,'','','']:i===N-1?[N,'Receptor','∞',0,'','','']:[i+1,m.nombre,m.Z,m.L,m.v,m.L/m.v,m.k])],[8,28,10,10,10,10,8]);
+  const cf=[['Interfaz','α ida (→)','β ida (→)','α vuelta (←)','β vuelta (←)']];
+  for(let j=1;j<N;j++){const[af,bf]=coef(med[j-1].Z,med[j].Z),[ab,bb]=coef(med[j].Z,med[j-1].Z);cf.push([`${j} | ${j+1}`,j!==1?af:'',j!==1?bf:'',j!==N-1?ab:'',j!==N-1?bb:''])}
+  add('Coeficientes',cf,[12,12,12,14,14]);
+  add('Ondas',[['#','Medio','Sentido','t salida (µs)','t llegada (µs)','V salida (p.u.)','V llegada (p.u.)','Cortada en t máx'],...r.ondas.map((w,i)=>[i+1,w.m,w.d===1?'→ receptor':'← emisor',w.t0,w.t1,w.a0,w.a1,w.tr?'sí':'no'])],[7,8,13,13,14,15,16,16]);
+  add('Receptor',[['t (µs)','V instantánea (p.u.)','V acumulada (p.u.)'],...r.rec.map(([t,v],i)=>[t,v,ac[i][1]])],[10,20,20]);
+  saveFile('diagrama_lattice.xlsx',new Uint8Array(XLSX.write(wb,{bookType:'xlsx',type:'array'})));
+}
+$('xls').onclick=exportar;
+
+let G=null,wEls=[],ON=[],CH=[],lit=[],anim=null;
+function clearHl(){lit.forEach(e=>e.classList.remove('on'));lit=[];$('lat').classList.remove('hl')}
+function hl(id){clearHl();const S=new Set([id]);for(let i=ON[id].p;i>=0;i=ON[i].p)S.add(i);
+  const q=[id];while(q.length)for(const c of CH[q.pop()]||[]){S.add(c);q.push(c)}
+  S.forEach(i=>(wEls[i]||[]).forEach(e=>{e.classList.add('on');lit.push(e)}));$('lat').classList.add('hl')}
+$('lat').addEventListener('mouseover',e=>{const t=e.target.closest('[data-w]');t?hl(+t.dataset.w):clearHl()});
+$('lat').addEventListener('mouseleave',clearHl);
+
+function stopAnim(r){cancelAnimationFrame(anim);anim=null;$('play').textContent='▶ Reproducir';
+  if(r&&G){$('rvr').setAttribute('height',G.Ht);$('cur').setAttribute('visibility','hidden');$('curt').setAttribute('visibility','hidden')}}
+function play(){
+  if(!G)return;if(anim){stopAnim(true);return}
+  const{Y,a,b}=G,dur=12000/+$('spd').value,t0=performance.now(),c=$('cur'),ct=$('curt');$('play').textContent='⏹ Detener';
+  const f=now=>{const k=Math.min(1,(now-t0)/dur),t=a+(b-a)*k,y=Y(t);
+    $('rvr').setAttribute('height',y);c.setAttribute('y1',y);c.setAttribute('y2',y);c.setAttribute('visibility','visible');
+    ct.setAttribute('y',y-5);ct.setAttribute('visibility','visible');ct.textContent='t = '+fmt(t)+' µs';
+    if(k<1)anim=requestAnimationFrame(f);else setTimeout(()=>stopAnim(true),700)};
+  anim=requestAnimationFrame(f)}
+$('play').onclick=play;
+$('rst').onclick=()=>{$('t0').value=0;$('t1').value='';go()};
+$('lat').addEventListener('wheel',e=>{if(!e.ctrlKey||!G)return;e.preventDefault();
+  const{top,H,a,b,tmax}=G,tc=a+((e.clientY-$('lat').getBoundingClientRect().top-top)/H)*(b-a),f=e.deltaY<0?.8:1.25,
+  na=Math.max(0,tc-(tc-a)*f),nb=Math.min(tmax,tc+(b-tc)*f);
+  $('t0').value=+na.toFixed(3);$('t1').value=(nb>=tmax-1e-6&&na<=1e-6)?'':+nb.toFixed(3);go()},{passive:false});
+
+function svgXml(){
+  const el=$('lat').cloneNode(true),cs=getComputedStyle(document.documentElement),rv=n=>cs.getPropertyValue(n).trim();
+  el.classList.remove('hl');el.querySelectorAll('.on').forEach(x=>x.classList.remove('on'));
+  el.querySelectorAll('.hit,#cur,#curt').forEach(x=>x.remove());el.querySelector('#rvr').setAttribute('height',G.Ht);
+  let css='';for(const r of document.styleSheets[0].cssRules)if(r.selectorText&&/^\.(band|grid-l|ax|disc|hd|cf|fw|bk|tl|pu|w|dash|ar|lb|tk|tm|v0|rv)$/.test(r.selectorText))css+=r.cssText;
+  css=css.replace(/var\((--[\w-]+)\)/g,(m,n)=>n==='--c'?m:rv(n));
+  el.insertAdjacentHTML('afterbegin',`<style>${css}</style><rect width="100%" height="100%" fill="${rv('--card')}"/>`);
+  el.insertAdjacentHTML('beforeend',G.ax);
+  el.setAttribute('xmlns','http://www.w3.org/2000/svg');el.setAttribute('font-family','system-ui,Arial,sans-serif');
+  return new XMLSerializer().serializeToString(el)}
+function expPng(){
+  if(!G)return;const sc=Math.min(2,8000/Math.max(G.W,G.Ht)),im=new Image();
+  im.onload=()=>{const c=document.createElement('canvas');c.width=G.W*sc;c.height=G.Ht*sc;const g=c.getContext('2d');g.scale(sc,sc);g.drawImage(im,0,0,G.W,G.Ht);c.toBlob(b=>b&&saveFile('diagrama_lattice.png',b))};
+  im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgXml())}
+$('png').onclick=expPng;
+$('svg').onclick=()=>{if(G)saveFile('diagrama_lattice.svg',new Blob([svgXml()],{type:'image/svg+xml'}))};
+$('thm').onclick=()=>{const r=document.documentElement,c=r.dataset.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');r.dataset.theme=c==='dark'?'light':'dark'};
 
 function lattice(med,{ondas,rec},V0,tmax){
   const N=med.length,H=+$('alt').value,mode=$('lab').value,umb=+$('eti').value||0;
-  const mL=150,mR=200,top=130,bot=120,avail=$('lat').parentElement.clientWidth||1200;
+  const mL=150,mR=200,top=150,bot=120,avail=$('lat').parentElement.clientWidth||1200;
   // los medios intermedios se reparten TODO el ancho disponible (nunca menos del mínimo elegido)
   const cw=Math.max(+$('cw').value,(avail-mL-mR)/(N-2)),W=Math.floor(mL+(N-2)*cw+mR),Ht=top+H+bot;
-  const X=j=>mL+j*cw,Y=t=>top+t/tmax*H,o=[];
+  let wa=+$('t0').value||0,wb=+$('t1').value||tmax;if(!(wa>=0&&wb<=tmax&&wb>wa)){wa=0;wb=tmax}
+  const X=j=>mL+j*cw,Y=t=>top+(t-wa)/(wb-wa)*H,o=[],O=o,d=[],ax=[];
   for(let i=2;i<N;i++)if(i%2===0)o.push(`<rect class="band" x="${X(i-2)}" y="${top}" width="${cw}" height="${H}"/>`);
-  const st=nice(tmax/8);
-  for(let i=0;i*st<=tmax+1e-9;i++){const y=Y(i*st);o.push(`<line class="grid-l" x1="70" x2="${W-10}" y1="${y}" y2="${y}"/><text class="ax" x="64" y="${y+4}" text-anchor="end">${fmt(i*st)}</text>`)}
-  o.push(`<text class="ax" transform="translate(16,${top+H/2}) rotate(-90)" text-anchor="middle">t (µs)</text>`);
+  const st=nice((wb-wa)/8);
+  for(let i=Math.ceil(wa/st-1e-9);i*st<=wb+1e-9;i++){const y=Y(i*st);o.push(`<line class="grid-l" x1="0" x2="${W-10}" y1="${y}" y2="${y}"/>`);ax.push(`<text class="ax" x="64" y="${y+4}" text-anchor="end">${fmt(i*st)}</text>`)}
+  ax.push(`<text class="ax" transform="translate(16,${top+H/2}) rotate(-90)" text-anchor="middle">t (µs)</text>`);
   for(let j=0;j<N-1;j++)o.push(`<line class="disc" x1="${X(j)}" x2="${X(j)}" y1="${top}" y2="${top+H}"/>`);
   med.forEach((m,i)=>{
     const n=i+1;let xc,L;
     if(n===1){xc=X(0)-70;L=['Medio 1','(emisor)','Z = 0 Ω','L = 0 m']}
     else if(n===N){xc=X(N-2)+100;L=[`Medio ${N}`,'(receptor)','Z = ∞','L = 0 m']}
-    else{xc=(X(n-2)+X(n-1))/2;L=[`Medio ${n}`,m.nombre,`Z = ${fmt(m.Z)} Ω ; L = ${fmt(m.L)} m`,`v = ${fmt(m.v)} m/µs ; τ = ${fmt(m.L/m.v)} µs`]}
-    o.push(`<text class="hd" text-anchor="middle" x="${xc}" y="${top-64}">`+L.map((s,q)=>`<tspan x="${xc}" dy="${q?16:0}"${q?'':' font-weight="700"'}>${s}</tspan>`).join('')+'</text>');
+    else{xc=(X(n-2)+X(n-1))/2;L=[`Medio ${n}`,m.nombre,`Z = ${fmt(m.Z)} Ω ; L = ${fmt(m.L)} m`,`v = ${fmt(m.v)} m/µs ; τ = ${fmt(m.L/m.v)} µs`,`k = ${m.k}`]}
+    o.push(`<text class="hd" text-anchor="middle" x="${xc}" y="${top-84}">`+L.map((s,q)=>`<tspan x="${xc}" dy="${q?16:0}"${q?'':' font-weight="700"'}>${s}</tspan>`).join('')+'</text>');
   });
   const lb=[],tk=Array.from({length:N-1},()=>new Set());
   for(const w of ondas){
@@ -170,31 +274,38 @@ function lattice(med,{ondas,rec},V0,tmax){
     let xz=X(b),tz=w.t1;const xa=X(a);
     if(w.tr){xz=xa+(tmax-w.t0)/(w.t1-w.t0)*(xz-xa);tz=tmax}
     const y1=Y(w.t0),y2=Y(tz),dx=xz-xa,dy=y2-y1,len=Math.hypot(dx,dy),cl=w.d===1?'fw':'bk';
-    o.push(`<line class="w ${cl}${w.tr?' dash':''}" x1="${xa}" y1="${y1}" x2="${xz}" y2="${y2}"><title>Medio ${w.m} ${w.d===1?'→':'←'}: ${fmt(w.a0)} → ${fmt(w.a1)} (${fmt(w.t0)} a ${fmt(w.t1)} µs)</title></line>`);
+    const ln=`x1="${xa}" y1="${y1}" x2="${xz}" y2="${y2}" data-w="${w.id}"`;
+    d.push(`<line class="w ${cl}${w.tr?' dash':''}" ${ln}/><line class="hit" ${ln}><title>Medio ${w.m} ${w.d===1?'→':'←'}: ${fmt(w.a0)} → ${fmt(w.a1)} (${fmt(w.t0)} a ${fmt(w.t1)} µs)</title></line>`);
     if(len>36){const ux=dx/len,uy=dy/len,px=xa+dx*.55,py=y1+dy*.55;
-      o.push(`<polygon class="ar ${cl}" points="${px+ux*6},${py+uy*6} ${px-ux*4-uy*4},${py-uy*4+ux*4} ${px-ux*4+uy*4},${py-uy*4-ux*4}"/>`)}
+      d.push(`<polygon class="ar ${cl}" data-w="${w.id}" points="${px+ux*6},${py+uy*6} ${px-ux*4-uy*4},${py-uy*4+ux*4} ${px-ux*4+uy*4},${py-uy*4-ux*4}"/>`)}
     tk[a].add(+w.t0.toFixed(6));if(!w.tr)tk[b].add(+w.t1.toFixed(6));
     if(Math.abs(w.a0)>=umb&&len>60){
       let ang=Math.atan2(dy,dx)*180/Math.PI,inv=false;
       if(ang>90){ang-=180;inv=true}else if(ang<-90){ang+=180;inv=true}
       const txt=mode==='llegada'?fmt(w.a1):inv?`${fmt(w.a1)} ← ${fmt(w.a0)}`:`${fmt(w.a0)} → ${fmt(w.a1)}`;
-      lb.push(`<text class="lb ${cl}" transform="translate(${xa+dx*.3},${y1+dy*.3}) rotate(${ang})" text-anchor="middle" dy="-5">${txt}</text>`);
+      lb.push(`<text class="lb ${cl}" data-w="${w.id}" transform="translate(${xa+dx*.3},${y1+dy*.3}) rotate(${ang})" text-anchor="middle" dy="-5">${txt}</text>`);
     }
   }
-  tk.forEach((s,j)=>[...s].sort((a,b)=>a-b).forEach(t=>o.push(`<line class="tk" x1="${X(j)-4}" x2="${X(j)+4}" y1="${Y(t)}" y2="${Y(t)}"/><text class="tm" x="${X(j)-8}" y="${Y(t)+4}" text-anchor="end">${fmt(t)}</text>`)));
-  o.push(...lb);
-  o.push(`<text class="v0" x="${X(0)+8}" y="${top-6}">V₀ = ${fmt(V0)} p.u.</text>`);
+  tk.forEach((s,j)=>[...s].sort((a,b)=>a-b).forEach(t=>d.push(`<line class="tk" x1="${X(j)-4}" x2="${X(j)+4}" y1="${Y(t)}" y2="${Y(t)}"/><text class="tm" x="${X(j)-8}" y="${Y(t)+4}" text-anchor="end">${fmt(t)}</text>`)));
+  d.push(...lb);
+  if(wa===0)O.push(`<text class="v0" x="${X(0)+8}" y="${top-6}">V₀ = ${fmt(V0)} p.u.</text>`);
   for(const[t,v]of rec){const y=Y(t),x=X(N-2);
-    o.push(`<line class="w tl" x1="${x}" y1="${y}" x2="${x+58}" y2="${y}"/><polygon class="ar tl" points="${x+66},${y} ${x+56},${y-4} ${x+56},${y+4}"/>${Math.abs(v)>=umb?`<text class="rv" x="${x+74}" y="${y+4}">${fmt(v)}</text>`:''}`)}
+    d.push(`<line class="w tl" x1="${x}" y1="${y}" x2="${x+58}" y2="${y}"/><polygon class="ar tl" points="${x+66},${y} ${x+56},${y-4} ${x+56},${y+4}"/>${Math.abs(v)>=umb?`<text class="rv" x="${x+74}" y="${y+4}">${fmt(v)}</text>`:''}`)}
   const sep=N>=10?',':'';
   const sb=(g,a,b,v)=>`${g}<tspan dy="4" font-size="10">${a}${sep}${b}</tspan><tspan dy="-4"> = ${fmt(v)}</tspan>`;
   for(let j=1;j<N;j++){
     const[af,bf]=coef(med[j-1].Z,med[j].Z),[ab,bb]=coef(med[j].Z,med[j-1].Z),x=X(j-1),ls=[];
     if(j!==1)ls.push(sb('α',j,j+1,af),sb('β',j,j+1,bf));
     if(j!==N-1)ls.push(sb('α',j+1,j,ab),sb('β',j+1,j,bb));
-    o.push(`<text class="cf" text-anchor="middle" x="${x}" y="${top+H+14}">`+ls.map(s=>`<tspan x="${x}" dy="17">${s}</tspan>`).join('')+'</text>');
+    o.push(`<text class="cf" text-anchor="middle" x="${x}" y="${top+H+14}">`+ls.map(s=>`<tspan x="${x}" dy="17">${s}</tspan>`).join('')+'<title>α = coeficiente de reflexión · β = coeficiente de transmisión. El subíndice ij indica una onda que viaja del medio i al medio j.</title></text>');
   }
-  const s=$('lat');s.setAttribute('viewBox',`0 0 ${W} ${Ht}`);s.setAttribute('width',W);s.setAttribute('height',Ht);s.innerHTML=o.join('');
+  stopAnim(false);clearHl();
+  const axm=ax.join(''),s=$('lat'),sa=$('ax');
+  s.setAttribute('viewBox',`0 0 ${W} ${Ht}`);s.setAttribute('width',W);s.setAttribute('height',Ht);
+  s.innerHTML=o.join('')+`<clipPath id="plot"><rect x="0" y="${top}" width="${W}" height="${H}"/></clipPath><clipPath id="rv"><rect id="rvr" x="0" y="0" width="${W}" height="${Ht}"/></clipPath><g clip-path="url(#plot)"><g clip-path="url(#rv)">${d.join('')}</g></g><line id="cur" class="cur" x1="0" x2="${W-10}" y1="0" y2="0" visibility="hidden"/><text id="curt" class="v0" x="${W-10}" y="0" text-anchor="end" visibility="hidden"></text>`;
+  sa.setAttribute('viewBox',`0 0 70 ${Ht}`);sa.setAttribute('width',70);sa.setAttribute('height',Ht);sa.innerHTML=axm;
+  G={Y,top,H,Ht,W,a:wa,b:wb,ax:axm,tmax};ON=ondas;CH=[];ondas.forEach(w=>{if(w.p>=0)(CH[w.p]??=[]).push(w.id)});
+  wEls=[];s.querySelectorAll('[data-w]').forEach(e=>(wEls[+e.dataset.w]??=[]).push(e));
 }
 
 function chart(id,title,pts,cls,tmax){
