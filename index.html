@@ -35,8 +35,9 @@ button:disabled{opacity:.5;cursor:default}
 .tile{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
 .tile span{display:block;font-size:12px;color:var(--mut)}.tile b{display:block;font-size:20px;margin:2px 0}.tile small{color:var(--mut);font-size:12px}
 .wrap{display:flex}.wrap>svg{flex:none}.wrap .scroll{flex:1;min-width:0}
-.hit{stroke:transparent;stroke-width:12;pointer-events:stroke}
-svg.hl [data-w]{opacity:.1}svg.hl [data-w].on{opacity:1}
+svg.hl [data-w]{opacity:.08}svg.hl [data-w].on{opacity:.55}svg.hl [data-w].me{opacity:1}
+svg.hl .w.me{stroke-width:4.5}svg.hl .lb.me{font-size:14px}
+#tip{position:fixed;z-index:9;max-width:260px;pointer-events:none;background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .cur{stroke:var(--tl);stroke-width:1.5;stroke-dasharray:4 3}
 .band{fill:var(--band)}.grid-l{stroke:var(--bd);stroke-dasharray:2 4}
 .ax{fill:var(--mut);font-size:12px}.disc{stroke:var(--fg);stroke-width:2.5}
@@ -95,6 +96,7 @@ svg.hl [data-w]{opacity:.1}svg.hl [data-w].on{opacity:1}
 </div>
 </main>
 
+<div id="tip" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),C=300,MAX=6000;
@@ -206,13 +208,25 @@ function exportar(){
 }
 $('xls').onclick=exportar;
 
-let G=null,wEls=[],ON=[],CH=[],lit=[],anim=null;
-function clearHl(){lit.forEach(e=>e.classList.remove('on'));lit=[];$('lat').classList.remove('hl')}
-function hl(id){clearHl();const S=new Set([id]);for(let i=ON[id].p;i>=0;i=ON[i].p)S.add(i);
+let G=null,wEls=[],ON=[],CH=[],WG=[],lit=[],anim=null,cur=-1;
+const tip=$('tip');
+function clearHl(){lit.forEach(e=>e.classList.remove('on','me'));lit=[];cur=-1;tip.hidden=true;$('lat').classList.remove('hl')}
+function hl(id){clearHl();cur=id;const S=new Set([id]);for(let i=ON[id].p;i>=0;i=ON[i].p)S.add(i);
   const q=[id];while(q.length)for(const c of CH[q.pop()]||[]){S.add(c);q.push(c)}
-  S.forEach(i=>(wEls[i]||[]).forEach(e=>{e.classList.add('on');lit.push(e)}));$('lat').classList.add('hl')}
-$('lat').addEventListener('mouseover',e=>{const t=e.target.closest('[data-w]');t?hl(+t.dataset.w):clearHl()});
-$('lat').addEventListener('mouseleave',clearHl);
+  S.forEach(i=>(wEls[i]||[]).forEach(e=>{e.classList.add(i===id?'me':'on');lit.push(e)}));$('lat').classList.add('hl')}
+function nearest(e){
+  const r=$('lat').getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,lim=+$('rvr').getAttribute('height');let best=-1,bd=9;
+  for(let i=0;i<WG.length;i++){const g=WG[i];if(!g||g[1]>lim)continue;
+    const dx=g[2]-g[0],dy=g[3]-g[1],l2=dx*dx+dy*dy,t=l2?Math.max(0,Math.min(1,((x-g[0])*dx+(y-g[1])*dy)/l2)):0,d=Math.hypot(x-g[0]-t*dx,y-g[1]-t*dy);
+    if(d<bd){bd=d;best=i}}
+  return best}
+function onMove(e){
+  if(!G)return;const i=nearest(e);
+  if(i<0){if(cur>=0)clearHl();return}
+  if(i!==cur)hl(i);
+  const w=ON[i];tip.textContent=`Medio ${w.m} · ${w.d===1?'→ hacia el receptor':'← hacia el emisor'} · V: ${fmt(w.a0)} → ${fmt(w.a1)} · t: ${fmt(w.t0)} a ${fmt(w.t1)} µs`;
+  tip.hidden=false;tip.style.left=Math.min(e.clientX+14,innerWidth-270)+'px';tip.style.top=(e.clientY+16)+'px'}
+$('lat').addEventListener('pointermove',onMove);$('lat').addEventListener('pointerdown',onMove);$('lat').addEventListener('pointerleave',clearHl);
 
 function stopAnim(r){cancelAnimationFrame(anim);anim=null;$('play').textContent='▶ Reproducir';
   if(r&&G){$('rvr').setAttribute('height',G.Ht);$('cur').setAttribute('visibility','hidden');$('curt').setAttribute('visibility','hidden')}}
@@ -233,7 +247,7 @@ $('lat').addEventListener('wheel',e=>{if(!e.ctrlKey||!G)return;e.preventDefault(
 
 function svgXml(){
   const el=$('lat').cloneNode(true),cs=getComputedStyle(document.documentElement),rv=n=>cs.getPropertyValue(n).trim();
-  el.classList.remove('hl');el.querySelectorAll('.on').forEach(x=>x.classList.remove('on'));
+  el.classList.remove('hl');el.querySelectorAll('.on,.me').forEach(x=>x.classList.remove('on','me'));
   el.querySelectorAll('.hit,#cur,#curt').forEach(x=>x.remove());el.querySelector('#rvr').setAttribute('height',G.Ht);
   let css='';for(const r of document.styleSheets[0].cssRules)if(r.selectorText&&/^\.(band|grid-l|ax|disc|hd|cf|fw|bk|tl|pu|w|dash|ar|lb|tk|tm|v0|rv)$/.test(r.selectorText))css+=r.cssText;
   css=css.replace(/var\((--[\w-]+)\)/g,(m,n)=>n==='--c'?m:rv(n));
@@ -255,7 +269,7 @@ function lattice(med,{ondas,rec},V0,tmax){
   // los medios intermedios se reparten TODO el ancho disponible (nunca menos del mínimo elegido)
   const cw=Math.max(+$('cw').value,(avail-mL-mR)/(N-2)),W=Math.floor(mL+(N-2)*cw+mR),Ht=top+H+bot;
   let wa=+$('t0').value||0,wb=+$('t1').value||tmax;if(!(wa>=0&&wb<=tmax&&wb>wa)){wa=0;wb=tmax}
-  const X=j=>mL+j*cw,Y=t=>top+(t-wa)/(wb-wa)*H,o=[],O=o,d=[],ax=[];
+  const X=j=>mL+j*cw,Y=t=>top+(t-wa)/(wb-wa)*H,o=[],O=o,d=[],ax=[],wg=[];
   for(let i=2;i<N;i++)if(i%2===0)o.push(`<rect class="band" x="${X(i-2)}" y="${top}" width="${cw}" height="${H}"/>`);
   const st=nice((wb-wa)/8);
   for(let i=Math.ceil(wa/st-1e-9);i*st<=wb+1e-9;i++){const y=Y(i*st);o.push(`<line class="grid-l" x1="0" x2="${W-10}" y1="${y}" y2="${y}"/>`);ax.push(`<text class="ax" x="64" y="${y+4}" text-anchor="end">${fmt(i*st)}</text>`)}
@@ -274,8 +288,8 @@ function lattice(med,{ondas,rec},V0,tmax){
     let xz=X(b),tz=w.t1;const xa=X(a);
     if(w.tr){xz=xa+(tmax-w.t0)/(w.t1-w.t0)*(xz-xa);tz=tmax}
     const y1=Y(w.t0),y2=Y(tz),dx=xz-xa,dy=y2-y1,len=Math.hypot(dx,dy),cl=w.d===1?'fw':'bk';
-    const ln=`x1="${xa}" y1="${y1}" x2="${xz}" y2="${y2}" data-w="${w.id}"`;
-    d.push(`<line class="w ${cl}${w.tr?' dash':''}" ${ln}/><line class="hit" ${ln}><title>Medio ${w.m} ${w.d===1?'→':'←'}: ${fmt(w.a0)} → ${fmt(w.a1)} (${fmt(w.t0)} a ${fmt(w.t1)} µs)</title></line>`);
+    wg[w.id]=[xa,y1,xz,y2];
+    d.push(`<line class="w ${cl}${w.tr?' dash':''}" x1="${xa}" y1="${y1}" x2="${xz}" y2="${y2}" data-w="${w.id}"/>`);
     if(len>36){const ux=dx/len,uy=dy/len,px=xa+dx*.55,py=y1+dy*.55;
       d.push(`<polygon class="ar ${cl}" data-w="${w.id}" points="${px+ux*6},${py+uy*6} ${px-ux*4-uy*4},${py-uy*4+ux*4} ${px-ux*4+uy*4},${py-uy*4-ux*4}"/>`)}
     tk[a].add(+w.t0.toFixed(6));if(!w.tr)tk[b].add(+w.t1.toFixed(6));
@@ -304,7 +318,7 @@ function lattice(med,{ondas,rec},V0,tmax){
   s.setAttribute('viewBox',`0 0 ${W} ${Ht}`);s.setAttribute('width',W);s.setAttribute('height',Ht);
   s.innerHTML=o.join('')+`<clipPath id="plot"><rect x="0" y="${top}" width="${W}" height="${H}"/></clipPath><clipPath id="rv"><rect id="rvr" x="0" y="0" width="${W}" height="${Ht}"/></clipPath><g clip-path="url(#plot)"><g clip-path="url(#rv)">${d.join('')}</g></g><line id="cur" class="cur" x1="0" x2="${W-10}" y1="0" y2="0" visibility="hidden"/><text id="curt" class="v0" x="${W-10}" y="0" text-anchor="end" visibility="hidden"></text>`;
   sa.setAttribute('viewBox',`0 0 70 ${Ht}`);sa.setAttribute('width',70);sa.setAttribute('height',Ht);sa.innerHTML=axm;
-  G={Y,top,H,Ht,W,a:wa,b:wb,ax:axm,tmax};ON=ondas;CH=[];ondas.forEach(w=>{if(w.p>=0)(CH[w.p]??=[]).push(w.id)});
+  G={Y,top,H,Ht,W,a:wa,b:wb,ax:axm,tmax};WG=wg;ON=ondas;CH=[];ondas.forEach(w=>{if(w.p>=0)(CH[w.p]??=[]).push(w.id)});
   wEls=[];s.querySelectorAll('[data-w]').forEach(e=>(wEls[+e.dataset.w]??=[]).push(e));
 }
 
